@@ -9,6 +9,28 @@ header {
     color: white;
     text-align: center;
     padding: 1em 0;
+    display: flex; /* Using flex to align items */
+    justify-content: center; /* Center everything horizontally */
+    align-items: center; /* Center everything vertically */
+}
+
+header img {
+    height: 80px; /* Adjust the size as needed */
+    margin-right: 20px; /* Space between the image and the title */
+    /* Remove margin if text-align is important for other elements */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column; /* Stack image and text vertically on small screens */
+        padding: 20px 0; /* Increase padding for better touch targets */
+    }
+
+    header img {
+        margin-right: 0; /* Remove margin on small screens */
+        margin-bottom: 10px; /* Add some space below the image */
+    }
 }
 
 nav ul {
