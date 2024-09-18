@@ -71,3 +71,29 @@ footer {
     background-color: #79d5d7;
     color: white;
 }
+
+/* Social Icons styling */
+footer .social-icons {
+    display: flex;
+    justify-content: center; /* Centers the icons */
+    gap: 20px; /* Space between icons */
+    margin-top: 10px; /* Space between text and icons */
+}
+
+footer .social-icons a {
+    color: white; /* Icon color */
+    font-size: 24px; /* Icon size */
+    transition: color 0.3s ease; /* Smooth hover effect */
+}
+
+footer .social-icons a:hover {
+    color: #333; /* Darker hover color */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    footer .social-icons {
+        gap: 15px; /* Adjust gap for smaller screens */
+    }
+}
+
