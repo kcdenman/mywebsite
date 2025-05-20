@@ -30,8 +30,35 @@
 
         </ul>
     </nav>
+
     <main>
         <section id="portfolio">
+            <!-- Google Calendar Appointment Scheduling begin -->
+            <link rel="stylesheet" href="https://calendar.google.com/calendar/scheduling-button-script.css">
+            <script src="https://calendar.google.com/calendar/scheduling-button-script.js" async></script>
+
+            <style>
+              /* override Google’s default; must come after their CSS */
+              .gc-appointment-scheduling-button,
+              .gc-appointment-scheduling-button span {   /* span holds the label */
+                color:#fff !important;                   /* white text */
+              }
+            </style>
+
+            <script>
+            (function () {
+              const target = document.currentScript;
+              window.addEventListener('load', () => {
+                calendar.schedulingButton.load({
+                  url: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ03pY9dICaTEtZPh5JqyR6PxzQcfilf3_NyrIw-BRstt_wLhpHCrbRbcixfDHoVmbEjAgnwoLJc?gv=true',
+                  color: '#5ad5d7',          // background colour
+                  label: 'Book a Meeting',
+                  target,
+                });
+              });
+            })();
+            </script>
+            <!-- end Google Calendar Appointment Scheduling -->
             <h2>Crypto Portfolio</h2>
             <h3>Morpheus</h3>
             <ul>
@@ -89,12 +116,6 @@
             <p>Prior to transferring to the Engineering school, I spent a year as a Finance major learning about financial markets. As I began learning about the application of differential equations to design obscure credit default swaps it became clear to me that while Finance is critically important, my young brain might be safer in an Engineering school.</p>
             <p>Today, with the rise of crypto, I am excited to draw from both my Engineering and Finance experience to contribute to the global system design of our increasingly fragile financial infrastructure.</p>
         </section>
-
-        <!-- Calendly badge widget begin
-            <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
-            <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
-            <script type="text/javascript">window.onload = function() { Calendly.initBadgeWidget({ url: 'https://calendly.com/kcdenman/lets-meet', text: 'Schedule time with me', color: '#5ad5d7', textColor: '#ffffff', branding: undefined }); }</script>
-         Calendly badge widget end -->
     
 
     </main>
