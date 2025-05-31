@@ -1,0 +1,14 @@
+# Node modules
+node_modules/
+chat-server/node_modules/
+
+# Environment variables and secrets
+.env
+chat-server/.env
+
+# OS and editor files
+.DS_Store
+*.log
+
+dist/
+build/
