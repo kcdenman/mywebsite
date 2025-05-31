@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="files/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Add marked library for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <header>
@@ -38,7 +40,7 @@
             <script src="https://calendar.google.com/calendar/scheduling-button-script.js" async></script>
 
             <style>
-              /* override Google’s default; must come after their CSS */
+              /* override Google's default; must come after their CSS */
               .gc-appointment-scheduling-button,
               .gc-appointment-scheduling-button span {   /* span holds the label */
                 color:#fff !important;                   /* white text */
@@ -133,5 +135,291 @@
                 </a>
             </div>
         </footer>
-</body>
+
+        <!-- Chat Widget -->
+        <div id="chat-widget" class="chat-widget">
+            <button id="chat-button" class="chat-button">
+                <i class="fas fa-comments"></i>
+            </button>
+            <div id="chat-interface" class="chat-interface hidden">
+                <div class="chat-header">
+                    <h3>Chat with Kevin's AI</h3>
+                    <button id="close-chat" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Type your message..." />
+                    <button id="send-message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .chat-widget {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 1000;
+            }
+
+            .chat-button {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background-color: #5ad5d7;
+                border: none;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                transition: transform 0.2s;
+            }
+
+            .chat-button:hover {
+                transform: scale(1.1);
+            }
+
+            .chat-interface {
+                position: fixed;
+                bottom: 90px;
+                right: 20px;
+                width: 350px;
+                height: 500px;
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+            }
+
+            .chat-interface.hidden {
+                display: none;
+            }
+
+            .chat-header {
+                padding: 15px;
+                background: #5ad5d7;
+                color: white;
+                border-radius: 10px 10px 0 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .chat-header h3 {
+                margin: 0;
+                font-size: 16px;
+            }
+
+            .close-button {
+                background: none;
+                border: none;
+                color: white;
+                cursor: pointer;
+                font-size: 18px;
+            }
+
+            .chat-messages {
+                flex-grow: 1;
+                padding: 15px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .message-row {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .assistant-avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                background: #fff;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            }
+
+            .message {
+                max-width: 80%;
+                padding: 10px;
+                border-radius: 10px;
+                margin: 5px 0;
+            }
+
+            .user-message {
+                background: #e9ecef;
+                align-self: flex-end;
+            }
+
+            .assistant-message {
+                background: #5ad5d7;
+                color: white;
+                align-self: flex-start;
+            }
+
+            /* Add styles for Markdown elements */
+            .assistant-message p {
+                margin: 0 0 10px 0;
+            }
+
+            .assistant-message p:last-child {
+                margin-bottom: 0;
+            }
+
+            .assistant-message ul {
+                margin: 0 0 10px 0;
+                padding-left: 20px;
+            }
+
+            .assistant-message li {
+                margin: 5px 0;
+            }
+
+            .assistant-message strong {
+                font-weight: 600;
+            }
+
+            .chat-input-container {
+                padding: 15px;
+                border-top: 1px solid #eee;
+                display: flex;
+                gap: 10px;
+            }
+
+            #chat-input {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 20px;
+                outline: none;
+            }
+
+            #send-message {
+                background: #5ad5d7;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #send-message:hover {
+                background: #4bc4c6;
+            }
+        </style>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const chatButton = document.getElementById('chat-button');
+                const chatInterface = document.getElementById('chat-interface');
+                const closeChat = document.getElementById('close-chat');
+                const chatInput = document.getElementById('chat-input');
+                const sendButton = document.getElementById('send-message');
+                const chatMessages = document.getElementById('chat-messages');
+                let messageHistory = [];
+
+                // Toggle chat interface
+                chatButton.addEventListener('click', () => {
+                    chatInterface.classList.toggle('hidden');
+                });
+
+                closeChat.addEventListener('click', () => {
+                    chatInterface.classList.add('hidden');
+                });
+
+                // Send message function
+                async function sendMessage() {
+                    const message = chatInput.value.trim();
+                    if (!message) return;
+
+                    // Add user message to chat
+                    addMessage(message, 'user');
+                    chatInput.value = '';
+
+                    try {
+                        const response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                message: message,
+                                history: messageHistory
+                            })
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                        } else {
+                            const assistantMessage = data.choices[0].message.content;
+                            addMessage(assistantMessage, 'assistant');
+                            messageHistory.push(
+                                { role: 'user', content: message },
+                                { role: 'assistant', content: assistantMessage }
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                    }
+                }
+
+                // Add message to chat
+                function addMessage(text, sender) {
+                    const row = document.createElement('div');
+                    row.classList.add('message-row');
+                    if (sender === 'assistant') {
+                        // Avatar for assistant
+                        const avatar = document.createElement('img');
+                        avatar.src = 'files/stacks_punk_favicon/apple-icon-60x60.png';
+                        avatar.alt = "Kevin's avatar";
+                        avatar.className = 'assistant-avatar';
+                        row.appendChild(avatar);
+                    }
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('message', `${sender}-message`);
+                    if (sender === 'assistant') {
+                        // Parse Markdown for assistant messages
+                        messageDiv.innerHTML = marked.parse(text);
+                    } else {
+                        messageDiv.textContent = text;
+                    }
+                    row.appendChild(messageDiv);
+                    if (sender === 'user') {
+                        // For user, align right
+                        row.style.justifyContent = 'flex-end';
+                    }
+                    chatMessages.appendChild(row);
+                    // Scroll so the top of the latest message is at the top of the chat window
+                    row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Send message on button click
+                sendButton.addEventListener('click', sendMessage);
+
+                // Send message on Enter key
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+
+                // Add initial greeting
+                addMessage("Hi! I'm Kevin's AI assistant. How can I help you learn more about Kevin and his work?", 'assistant');
+            });
+        </script>
+    </body>
 </html>
