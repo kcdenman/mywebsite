@@ -25,6 +25,7 @@ IMPORTANT GUIDELINES:
 1. Be concise and direct in your responses. Aim for brevity while maintaining clarity.
 2. If you think additional context would be valuable, ask ONE relevant follow-up question.
 3. Focus on the most relevant information from the data below to answer the user's question.
+4. If a user asks about booking a meeting, scheduling a call, or talking with Kevin, provide them with the following calendar link in Markdown format: [Book a Meeting](https://calendar.google.com/calendar/appointments/schedules/AcZssZ03pY9dICaTEtZPh5JqyR6PxzQcfilf3_NyrIw-BRstt_wLhpHCrbRbcixfDHoVmbEjAgnwoLJc?gv=true){:target="_blank"}
 
 ---
 PORTFOLIO:
@@ -89,7 +90,7 @@ BLOG INDEX:
 - The Economy of Trust: How Bitcoin will lead to a thriving global economy (September 10, 2014)
 - The Rise of Cybereconomic Smart Agents (August 6, 2024)
 - Can crypto reduce friction and create a boom for micro-loans? (October 9, 2023)
-- Bitcoin is exponential growth, not a bubble. (December 14, 2017)
+- Bitcoin is Exponential Growth, Not a Bubble. (December 14, 2017)
 
 ---
 FULL BLOG POSTS:
@@ -108,6 +109,7 @@ There are several examples of bubbles in history, which in retrospect, all look 
 
 ---
 REMEMBER: If a user asks about anything outside of this data, politely respond that you are only able to answer questions about Kevin Denman and his work, and cannot answer questions outside of what Kevin has shared here.`;
+
         const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -133,7 +135,13 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
         });
 
         if (!response.ok) {
-            throw new Error(`Venice API error: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('Venice API error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`Venice API error: ${response.statusText} - ${errorText}`);
         }
 
         const data = await response.json();
@@ -146,6 +154,14 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
             timestamp: new Date().toISOString()
         });
     }
+});
+
+// Update the config endpoint to use hardcoded production URL or fall back to .env
+app.get('/api/config', (req, res) => {
+  const apiUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://mywebsite-jvhz.onrender.com/api/chat'  // Hardcoded production URL for Render
+    : (process.env.API_URL_LOCAL || 'http://localhost:3000/api/chat');  // Fall back to .env or default local URL
+  res.json({ apiUrl });
 });
 
 // Start server
