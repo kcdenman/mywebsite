@@ -22,6 +22,26 @@ Be professional, concise, and friendly. DO NOT provide the calendar link until y
 
     async handleConversation(message, history = []) {
         try {
+            // First check if we have all required information
+            const leadInfo = this.extractLeadInfo([...history, { role: 'user', content: message }]);
+            
+            if (leadInfo.isComplete) {
+                // Create lead in Google Sheets
+                const result = await googleSheetTool.createLead(leadInfo.data);
+                if (result.success) {
+                    return {
+                        success: true,
+                        message: "Perfect! I've recorded your information. Here's Kevin's calendar link to schedule the meeting: [Book a Meeting](https://calendar.google.com/calendar/appointments/schedules/AcZssZ03pY9dICaTEtZPh5JqyR6PxzQcfilf3_NyrIw-BRstt_wLhpHCrbRbcixfDHoVmbEjAgnwoLJc?gv=true){:target='_blank'}"
+                    };
+                }
+            }
+
+            // If we don't have complete information, proceed with Venice API call
+            console.log('Sending request to Venice API:', {
+                message,
+                history: JSON.stringify(history)
+            });
+
             const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -35,7 +55,7 @@ Be professional, concise, and friendly. DO NOT provide the calendar link until y
                             role: "system",
                             content: this.systemPrompt
                         },
-                        ...(history || []),
+                        ...history,
                         {
                             role: "user",
                             content: message
@@ -47,24 +67,17 @@ Be professional, concise, and friendly. DO NOT provide the calendar link until y
             });
 
             if (!response.ok) {
-                throw new Error(`Venice API error: ${response.statusText}`);
+                const errorText = await response.text();
+                console.error('Venice API error details:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorText
+                });
+                throw new Error(`Venice API error: ${response.statusText} - ${errorText}`);
             }
 
             const data = await response.json();
             const assistantMessage = data.choices[0].message.content;
-
-            // Check if we have all required information in the history
-            const leadInfo = this.extractLeadInfo(history);
-            if (leadInfo.isComplete) {
-                // Create lead in Google Sheets
-                const result = await googleSheetTool.createLead(leadInfo.data);
-                if (result.success) {
-                    return {
-                        success: true,
-                        message: assistantMessage + "\n\nGreat! I've recorded your information. Here's Kevin's calendar link to schedule the meeting: [Book a Meeting](https://calendar.google.com/calendar/appointments/schedules/AcZssZ03pY9dICaTEtZPh5JqyR6PxzQcfilf3_NyrIw-BRstt_wLhpHCrbRbcixfDHoVmbEjAgnwoLJc?gv=true){:target='_blank'}"
-                    };
-                }
-            }
 
             return {
                 success: true,
@@ -94,26 +107,34 @@ Be professional, concise, and friendly. DO NOT provide the calendar link until y
         // Simple regex patterns for extraction
         const patterns = {
             email: /[\w.-]+@[\w.-]+\.\w+/,
-            firstName: /first name:?\s*([A-Za-z]+)/i,
-            lastName: /last name:?\s*([A-Za-z]+)/i,
-            company: /company:?\s*([A-Za-z0-9\s]+)/i
+            firstName: /(?:first[\s-_]*name:?\s*|^|\s+)([A-Za-z]+)(?:\s|$)/i,
+            lastName: /(?:last[\s-_]*name:?\s*|^|\s+)([A-Za-z]+)(?:\s|$)/i,
+            company: /(?:company:?\s*|^|\s+)([A-Za-z0-9\s]+)(?:\s|$)/i
         };
 
         // Search through history for information
         for (const msg of history) {
             const content = msg.content;
+            console.log('Checking message content:', content);
             
             if (!leadData.email && patterns.email.test(content)) {
                 leadData.email = content.match(patterns.email)[0];
+                console.log('Found email:', leadData.email);
             }
             if (!leadData.firstName && patterns.firstName.test(content)) {
-                leadData.firstName = content.match(patterns.firstName)[1];
+                const match = content.match(patterns.firstName);
+                leadData.firstName = match[1];
+                console.log('Found first name:', leadData.firstName);
             }
             if (!leadData.lastName && patterns.lastName.test(content)) {
-                leadData.lastName = content.match(patterns.lastName)[1];
+                const match = content.match(patterns.lastName);
+                leadData.lastName = match[1];
+                console.log('Found last name:', leadData.lastName);
             }
             if (!leadData.company && patterns.company.test(content)) {
-                leadData.company = content.match(patterns.company)[1];
+                const match = content.match(patterns.company);
+                leadData.company = match[1].trim();
+                console.log('Found company:', leadData.company);
             }
         }
 
@@ -124,6 +145,8 @@ Be professional, concise, and friendly. DO NOT provide the calendar link until y
             leadData.lastName &&
             leadData.company
         );
+
+        console.log('Lead info complete:', isComplete, leadData);
 
         return {
             isComplete,

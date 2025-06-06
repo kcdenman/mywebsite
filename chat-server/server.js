@@ -7,7 +7,7 @@ const toolManager = require('./tools/toolManager');
 
 // Middleware
 app.use(cors({
-  origin: ['https://www.kevindenman.xyz', 'http://localhost:3000'],
+  origin: ['https://www.kevindenman.xyz', 'http://localhost:3000', 'http://localhost:8000', 'null'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -19,77 +19,20 @@ app.post('/api/chat', async (req, res) => {
     try {
         const { message, history } = req.body;
         
+        console.log('Received request:', { message, history });
+        
         if (!message) {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        // Check if message contains meeting-related keywords
-        const meetingKeywords = [
-            'schedule a meeting',
-            'book a call',
-            'meet with',
-            'talk to',
-            'discuss with',
-            'connect with',
-            'schedule time',
-            'book time'
-        ];
-
-        const isRequestingMeeting = meetingKeywords.some(keyword => 
-            message.toLowerCase().includes(keyword.toLowerCase())
-        );
-
-        if (isRequestingMeeting) {
-            return res.json({
-                choices: [{
-                    message: {
-                        content: "I'd be happy to help you schedule a meeting with Kevin. Could you please provide:\n" +
-                                "- Your email address\n" +
-                                "- Your first name\n" +
-                                "- Your last name\n" +
-                                "- Your company name"
-                    }
-                }]
-            });
-        }
-
-        // Check if we're in a meeting scheduling conversation
-        const hasEmail = /[\w.-]+@[\w.-]+\.\w+/.test(message);
-        const hasName = /name:?\s*([A-Za-z]+)/i.test(message);
-        const hasCompany = /company:?\s*([A-Za-z0-9\s]+)/i.test(message);
-
-        if (history?.length > 0 && (hasEmail || hasName || hasCompany)) {
-            // Use the inbound lead specialist to handle the response
-            const result = await toolManager.handleToolCall('inbound_lead_specialist', {
-                message,
-                history: [...(history || []), { role: 'user', content: message }]
-            });
-            
-            return res.json({
-                choices: [{
-                    message: {
-                        content: result.message
-                    }
-                }]
-            });
-        }
-
-        // Regular chat flow for non-meeting requests
+        // Regular chat flow for all requests
         const systemPrompt = `You are Kevin Denman's personal AI assistant. You are an expert ONLY on Kevin Denman. You must not answer questions about any other topic or person. Your knowledge is strictly limited to the information below, which is drawn from Kevin's portfolio, philosophy, blog index, and full blog posts. If a user asks about anything outside of this data, politely respond that you are only able to answer questions about Kevin Denman and his work, and cannot answer questions outside of what Kevin has shared here.
 
 IMPORTANT GUIDELINES:
 1. Be concise and direct in your responses. Aim for brevity while maintaining clarity.
 2. If you think additional context would be valuable, ask ONE relevant follow-up question.
 3. Focus on the most relevant information from the data below to answer the user's question.
-4. MEETING REQUESTS: If the user mentions ANY of these phrases or similar intent:
-   - "schedule a meeting"
-   - "book a call"
-   - "meet with Kevin"
-   - "talk to Kevin"
-   - "discuss with Kevin"
-   - "connect with Kevin"
-   You MUST use the inbound_lead_specialist tool to handle the conversation.
-   DO NOT provide the calendar link directly.
+4. For meeting requests, respond with EXACTLY: "In order to book a meeting, you can use the Book a Meeting link on this page."
 
 AVAILABLE TOOLS:
 {
@@ -249,8 +192,7 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
                     ...data.choices[0],
                     message: {
                         ...data.choices[0].message,
-                        content: assistantMessage.replace(/<tool>.*<\/parameters>/s, '') + 
-                                `\n\nTool execution result: ${JSON.stringify(toolResult)}`
+                        content: toolResult.message || toolResult.error || 'An error occurred processing your request.'
                     }
                 }]
             };
@@ -261,15 +203,14 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
         }
 
     } catch (error) {
-        console.error('Chat API error:', {
+        console.error('Detailed error:', {
             message: error.message,
             stack: error.stack,
-            cause: error.cause,
-            timestamp: new Date().toISOString()
+            cause: error.cause
         });
         res.status(500).json({ 
             error: 'Sorry, I encountered an error. Please try again.',
-            errorId: Date.now(),  // Add an error ID for tracking
+            errorId: Date.now(),
             timestamp: new Date().toISOString()
         });
     }
@@ -278,8 +219,8 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
 // Update the config endpoint to use hardcoded production URL or fall back to .env
 app.get('/api/config', (req, res) => {
   const apiUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://mywebsite-jvhz.onrender.com/api/chat'  // Hardcoded production URL for Render
-    : (process.env.API_URL_LOCAL || 'http://localhost:3000/api/chat');  // Fall back to .env or default local URL
+    ? 'https://mywebsite-jvhz.onrender.com/api/chat'  // Production URL
+    : 'http://localhost:3000/api/chat';  // Local development URL
   res.json({ apiUrl });
 });
 
