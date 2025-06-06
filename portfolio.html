@@ -349,8 +349,8 @@
                     chatInput.value = '';
 
                     try {
-                        // Use the hardcoded local URL for testing
-                        const apiUrl = 'http://localhost:3000/api/chat';
+                        // Use the production URL
+                        const apiUrl = 'https://mywebsite-jvhz.onrender.com/api/chat';
 
                         const response = await fetch(apiUrl, {
                             method: 'POST',

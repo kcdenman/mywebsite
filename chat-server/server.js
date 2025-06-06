@@ -3,9 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
+const toolManager = require('./tools/toolManager');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://www.kevindenman.xyz', 'http://localhost:3000'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('.'));
 
@@ -18,14 +23,93 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        // Hard-coded system prompt with full data
+        // Check if message contains meeting-related keywords
+        const meetingKeywords = [
+            'schedule a meeting',
+            'book a call',
+            'meet with',
+            'talk to',
+            'discuss with',
+            'connect with',
+            'schedule time',
+            'book time'
+        ];
+
+        const isRequestingMeeting = meetingKeywords.some(keyword => 
+            message.toLowerCase().includes(keyword.toLowerCase())
+        );
+
+        if (isRequestingMeeting) {
+            return res.json({
+                choices: [{
+                    message: {
+                        content: "I'd be happy to help you schedule a meeting with Kevin. Could you please provide:\n" +
+                                "- Your email address\n" +
+                                "- Your first name\n" +
+                                "- Your last name\n" +
+                                "- Your company name"
+                    }
+                }]
+            });
+        }
+
+        // Check if we're in a meeting scheduling conversation
+        const hasEmail = /[\w.-]+@[\w.-]+\.\w+/.test(message);
+        const hasName = /name:?\s*([A-Za-z]+)/i.test(message);
+        const hasCompany = /company:?\s*([A-Za-z0-9\s]+)/i.test(message);
+
+        if (history?.length > 0 && (hasEmail || hasName || hasCompany)) {
+            // Use the inbound lead specialist to handle the response
+            const result = await toolManager.handleToolCall('inbound_lead_specialist', {
+                message,
+                history: [...(history || []), { role: 'user', content: message }]
+            });
+            
+            return res.json({
+                choices: [{
+                    message: {
+                        content: result.message
+                    }
+                }]
+            });
+        }
+
+        // Regular chat flow for non-meeting requests
         const systemPrompt = `You are Kevin Denman's personal AI assistant. You are an expert ONLY on Kevin Denman. You must not answer questions about any other topic or person. Your knowledge is strictly limited to the information below, which is drawn from Kevin's portfolio, philosophy, blog index, and full blog posts. If a user asks about anything outside of this data, politely respond that you are only able to answer questions about Kevin Denman and his work, and cannot answer questions outside of what Kevin has shared here.
 
 IMPORTANT GUIDELINES:
 1. Be concise and direct in your responses. Aim for brevity while maintaining clarity.
 2. If you think additional context would be valuable, ask ONE relevant follow-up question.
 3. Focus on the most relevant information from the data below to answer the user's question.
-4. If a user asks about booking a meeting, scheduling a call, or talking with Kevin, provide them with the following calendar link in Markdown format: [Book a Meeting](https://calendar.google.com/calendar/appointments/schedules/AcZssZ03pY9dICaTEtZPh5JqyR6PxzQcfilf3_NyrIw-BRstt_wLhpHCrbRbcixfDHoVmbEjAgnwoLJc?gv=true){:target="_blank"}
+4. MEETING REQUESTS: If the user mentions ANY of these phrases or similar intent:
+   - "schedule a meeting"
+   - "book a call"
+   - "meet with Kevin"
+   - "talk to Kevin"
+   - "discuss with Kevin"
+   - "connect with Kevin"
+   You MUST use the inbound_lead_specialist tool to handle the conversation.
+   DO NOT provide the calendar link directly.
+
+AVAILABLE TOOLS:
+{
+  "inbound_lead_specialist": {
+    "description": "Handles the conversation flow for collecting lead information and scheduling meetings",
+    "parameters": {
+      "message": "string (the user's message)",
+      "history": "array (the conversation history)"
+    }
+  }
+}
+
+To use the specialist tool, respond EXACTLY like this:
+<tool>inbound_lead_specialist</tool>
+<parameters>
+{
+  "message": "{{user's exact message}}",
+  "history": {{conversation history array}}
+}
+</parameters>
 
 ---
 PORTFOLIO:
@@ -117,7 +201,7 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
                 'Authorization': `Bearer ${process.env.VENICE_API_KEY}`
             },
             body: JSON.stringify({
-                model: "venice-uncensored",
+                model: "llama-3.3-70b",
                 messages: [
                     {
                         role: "system",
@@ -145,12 +229,47 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
         }
 
         const data = await response.json();
-        res.json(data);
+        const assistantMessage = data.choices[0].message.content;
+
+        // Check for tool calls in the response
+        const toolMatch = assistantMessage.match(/<tool>(.*?)<\/tool>/);
+        const parametersMatch = assistantMessage.match(/<parameters>(.*?)<\/parameters>/s);
+
+        if (toolMatch && parametersMatch) {
+            const toolName = toolMatch[1];
+            const parameters = JSON.parse(parametersMatch[1]);
+            
+            // Execute the tool call
+            const toolResult = await toolManager.handleToolCall(toolName, parameters);
+            
+            // Append tool result to the response
+            const finalResponse = {
+                ...data,
+                choices: [{
+                    ...data.choices[0],
+                    message: {
+                        ...data.choices[0].message,
+                        content: assistantMessage.replace(/<tool>.*<\/parameters>/s, '') + 
+                                `\n\nTool execution result: ${JSON.stringify(toolResult)}`
+                    }
+                }]
+            };
+            
+            res.json(finalResponse);
+        } else {
+            res.json(data);
+        }
 
     } catch (error) {
-        console.error('Chat API error:', error);
+        console.error('Chat API error:', {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+            timestamp: new Date().toISOString()
+        });
         res.status(500).json({ 
             error: 'Sorry, I encountered an error. Please try again.',
+            errorId: Date.now(),  // Add an error ID for tracking
             timestamp: new Date().toISOString()
         });
     }
