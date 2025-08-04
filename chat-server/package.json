@@ -7,7 +7,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@hubspot/api-client": "^13.0.0",
     "axios": "^1.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
