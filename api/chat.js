@@ -1,20 +1,23 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const app = express();
 const toolManager = require('../chat-server/tools/toolManager');
 
-// Middleware
-app.use(cors({
-  origin: ['https://www.kevindenman.xyz', 'http://localhost:3000', 'http://localhost:8000', 'null'],
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
-app.use(express.json());
-app.use(express.static('.'));
+// Serverless function handler
+export default async function handler(req, res) {
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+    
+    // Only allow POST requests
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-// Chat endpoint
-app.post('/api/chat', async (req, res) => {
     try {
         const { message, history } = req.body;
         
@@ -213,23 +216,4 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
             timestamp: new Date().toISOString()
         });
     }
-});
-
-// Update the config endpoint to use Vercel URL
-app.get('/api/config', (req, res) => {
-  const apiUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://www.kevindenman.xyz/api/chat'  // Vercel production URL with www
-    : 'http://localhost:3000/api/chat';  // Local development URL
-  res.json({ apiUrl });
-});
-
-// For local development only - don't start server in serverless environment
-if (process.env.NODE_ENV !== 'production') {
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-        console.log(`Chat server running at http://localhost:${port}`);
-    });
 }
-
-// Export the Express app for Vercel serverless functions
-module.exports = app;
