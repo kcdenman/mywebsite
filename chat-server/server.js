@@ -219,7 +219,7 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
 // Update the config endpoint to use hardcoded production URL or fall back to .env
 app.get('/api/config', (req, res) => {
   const apiUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://mywebsite-jvhz.onrender.com/api/chat'  // Production URL
+    ? 'https://www.kevindenman.xyz/api/chat'  // Vercel production URL
     : 'http://localhost:3000/api/chat';  // Local development URL
   res.json({ apiUrl });
 });
