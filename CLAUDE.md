@@ -60,7 +60,7 @@ npm start  # Starts server on port 3000 (or PORT env var)
 
 For chat server functionality:
 - `VENICE_API_KEY`: API key for Venice AI service
-- `GOOGLE_SHEETS_PRIVATE_KEY`: Google Sheets API access
+- `GOOGLE_SHEET_WEBHOOK_URL`: Google Sheets webhook URL for lead data
 - `PORT`: Server port (defaults to 3000)
 
 ## Development Notes
