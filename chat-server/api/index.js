@@ -218,7 +218,7 @@ REMEMBER: If a user asks about anything outside of this data, politely respond t
 // Update the config endpoint to use Vercel URL
 app.get('/api/config', (req, res) => {
   const apiUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://your-vercel-app.vercel.app/api/chat'  // Will be updated with actual Vercel URL
+    ? 'https://kevindenman.xyz/api/chat'  // Vercel production URL
     : 'http://localhost:3000/api/chat';  // Local development URL
   res.json({ apiUrl });
 });
