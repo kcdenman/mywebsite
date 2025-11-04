@@ -1,4 +1,4 @@
-const toolManager = require('../chat-server/tools/toolManager');
+const toolManager = require('../tools/toolManager');
 
 // Serverless function handler
 module.exports = async function handler(req, res) {
